@@ -349,6 +349,18 @@ def init_db() -> None:
             conn.execute(
                 "ALTER TABLE poop_profiles ADD COLUMN shit_given_json TEXT NOT NULL DEFAULT '{}'"
             )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_message_stats (
+                chat_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                display_name TEXT NOT NULL DEFAULT '',
+                message_count INTEGER NOT NULL DEFAULT 0,
+                last_seen_ts REAL NOT NULL DEFAULT 0,
+                PRIMARY KEY (chat_id, user_id)
+            )
+            """
+        )
 
 
 def _load_profile(user_id: int, chat_id: int, lang: str) -> dict:
