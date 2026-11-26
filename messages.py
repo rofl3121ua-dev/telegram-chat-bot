@@ -21,6 +21,11 @@ from content import (
     send_random_gif,
 )
 from i18n import detect_lang, t
+from mama_grounding import (
+    build_grounded_rank_reply,
+    detect_rank_intent,
+    record_message_activity,
+)
 from smart_replies import match_smart_reply
 
 from .commands import execute_altushka
@@ -306,6 +311,15 @@ async def on_regular_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         if message.from_user and not message.from_user.is_bot:
             _touch_kakapair_user(context, message.from_user.id)
+            chat = update.effective_chat
+            if chat is not None:
+                u = message.from_user
+                record_message_activity(
+                    chat.id,
+                    u.id,
+                    username=u.username,
+                    display_name=(u.full_name or u.first_name or "").strip() or None,
+                )
         _remember_chat_payload(message, context)
         text = message.text.lower()
         if not context.chat_data.get("lang_locked", False):
@@ -313,6 +327,13 @@ async def on_regular_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         lang = _chat_lang(update, context)
         if _is_altushka_keyword(message.text):
             await execute_altushka(update, context, lang)
+            return
+
+        # Factual ranking («мать топ токсичных / активных») — only real DB stats.
+        rank_intent = detect_rank_intent(message.text)
+        if rank_intent is not None and update.effective_chat is not None:
+            grounded = build_grounded_rank_reply(lang, update.effective_chat.id, rank_intent)
+            await message.reply_text(grounded)
             return
 
         auto_gif_replies_enabled = context.bot_data.get("AUTO_GIF_REPLIES_ENABLED", False)
